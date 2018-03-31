@@ -1,2 +1,10 @@
 # telegram-bak
-Backup dumper for telegram
+
+Backup dumper for telegram written in c
+
+pre-alpha
+
+# dependencies
+
+* openssl
+* zlib
