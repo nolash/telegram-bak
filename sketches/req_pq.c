@@ -12,10 +12,14 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#define TELEGRAM_HOST "149.154.167.50"
-#define TELEGRAM_PORT "80"
+#include "primes.h"
+#include "std.h"
+#include "config.h"
 
-int write_buffer(char *fname, char *buf, int n) {
+#define TELEGRAM_HOST TELEGRAM_SERVER_TEST_1
+#define TELEGRAM_PORT TELEGRAM_PORT_2
+
+int dump_buffer(char *fname, char *buf, int n) {
 	int f, e, r;
 
 	e = 0;
@@ -37,27 +41,39 @@ int write_buffer(char *fname, char *buf, int n) {
 // a messy implementation of Telegram's MTProto API; first client auch msg
 // (Code assumes little-endian arch. ints, crcs etc need to be converted if not)
 int main() {
-	int r;
-	char b[16];
-	char msg[1024];
-	char ip[16];
-	char buf[1024];
-	short port;
-	int msglen;
-	struct timespec ts;
-	long t;
-	long tmp;
-	uLong z;
-	int f;
-	char *fname;
-	int s;
 
+	// result ints + iterators
+	int r, i, j;
+
+	// messages
+	char b[256]; // work buffer
+	char msg[1024]; // send buffer
+	char buf[1024]; // recv buffer
+	char *rpccall_str;
+	char *t, *u; // tmp char pointers
+	int msglen;
+
+	// inet + ipc
+	char ip[16];
+	short port;
+	int sd; // socket fd
 	struct addrinfo hints, *res, *p;
 
+	struct timespec ts;
+	long tm;
+	long tmp;
+
+	// zlib
+	uLong z;
+
+	// local io
+	int f;
+	char *fname;
+
 	// command is crc32 of "<callname> [args:type].. = <Type>", converted to NBO
-	const char *rpccall_req_pq_str = "req_pq nonce:int128 = ResPQ";
+	rpccall_str = "req_pq_multi nonce:int128 = ResPQ";
 	z = crc32(0L, Z_NULL, 0);
-	z = crc32(z, rpccall_req_pq_str, strlen(rpccall_req_pq_str));
+	z = crc32(z, (const char*)rpccall_str, strlen(rpccall_str));
 
 	// make a random nonce
 	memset(b, 0, 16);
@@ -74,9 +90,9 @@ int main() {
 		return 1;
 	}
 	tmp = ts.tv_nsec;
-	memcpy((int*)&t, &tmp, 4);
+	memcpy((int*)&tm, &tmp, 4);
 	tmp = ts.tv_sec;
-	memcpy((int*)(&t)+1, (int*)&tmp, 4);
+	memcpy((int*)(&tm)+1, (int*)&tmp, 4);
 
 	// compose the message
 	// It has four parts:
@@ -94,7 +110,7 @@ int main() {
 	memset(msg+4, 0, 12);
 
 	// message id = time
-	memcpy(msg+16, &t, 8);
+	memcpy(msg+16, &tm, 8);
 
 	// length of payload
 	msglen = 20;
@@ -122,51 +138,51 @@ int main() {
 		fprintf(stderr, "Can't create socket: %s", strerror(errno));
 		return 1;
 	}
-	s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	sd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 
 	// connect and send data
-	r = connect(s, res->ai_addr, res->ai_addrlen);
+	r = connect(sd, res->ai_addr, res->ai_addrlen);
 	if (r != 0) {
 		fprintf(stderr, "Can't connect: %s", strerror(errno));
 		return 1;
 	}
-	r = send(s, msg, 52, 0);
+	r = send(sd, msg, 52, 0);
 	if (r < 0) {
 		fprintf(stderr, "Send error: %d", errno);
-		close(s);
+		close(sd);
 		return 1;	
 	} else if (r != 52) {
 		fprintf(stderr, "Short send: %d", r);
-		close(s);
+		close(sd);
 		return 1;	
 	}
 
 	// write send phase 1 to file
 	fname = "1_send.bin";
-	if (write_buffer(fname, msg, 52)) {
-		close(s);
+	if (dump_buffer(fname, msg, 52)) {
+		close(sd);
 		return 1;
 	}
 
 	// receive data from server
-	r = recv(s, buf, 1024, 0);
+	r = recv(sd, buf, 1024, 0);
 	if (r <= 0) {
 		fprintf(stderr, "No msg received: %s", strerror(errno));
-		close(s);
+		close(sd);
 		return 1;
 	}
 
 	// check server response length
-	if (r != 96) {
-		fprintf(stderr, "Server response should be 96 bytes, was %d", r);
-		close(s);
+	if (r != 104) {
+		fprintf(stderr, "Server response should be 104 bytes, was %d", r);
+		close(sd);
 		return 1;
 	}
-	close(s);
 
 	// server sends our nonce back. Check that it matches
 	if (memcmp(buf+32, msg+32, 16)) {
 		fprintf(stderr, "Nonces do not match!");
+		close(sd);
 		return 1;
 	}
 		
@@ -177,16 +193,94 @@ int main() {
 
 	if (memcmp(&z, buf+(r-4), 4)) {
 		fprintf(stderr, "CRCs do not match: our %x / their %x", z, *(int*)(buf+(r-4)));
+		close(sd);
 		return 1;
 		
 	}
 
+	// TODO choose public key fingerprint from response
+
 	// write phase 1 to file
 	fname = "1_recv.bin";
-	if (write_buffer(fname, buf, 96)) {
+	if (dump_buffer(fname, buf, 104)) {
+		close(sd);
 		return 1;
 	}
-			
+
+	// solve pq challenge
+	memset(b, 0, 72);
+	r = buf[56];
+	memcpy(b, &buf[56], r);
+	t = &b[32];
+	u = &b[64];
+	r = tgbk_pq(r, b, 32, (unsigned char**)&t, &i, (unsigned char**)&u, &j);
+	if (r) {
+		fprintf(stderr, "pq solve failed: %d\n", r);
+		close(sd);
+		return 1;
+	}
+	if (is_le()) {
+		int32_rev((int*)t);
+		int32_rev((int*)u);
+	}
+
+	// build 
+	rpccall_str = "p_q_inner_data pq:string p:string q:string nonce:int128 server_nonce:int128 new_nonce:int256 = P_Q_inner_data";
+	z = crc32(0L, Z_NULL, 0);
+	z = crc32(z, (const char*)rpccall_str, strlen(rpccall_str));
+
+	// TODO dynamic determine pq data lengths, for now assume 12 bytes for pq and 8 bytes for p and q (8 and 4 respectively plus 1 length byte, padded to multiple of 4)
+	
+	// length of request
+	r = 108;
+	memset(msg, 0, r);
+	memcpy(msg, (char*)&r, 4);
+
+	// packet sequence number
+	r = 1;
+	memcpy(msg+4, (char*)&r, 4);
+
+	// combinator req_pq_inner_data
+	memcpy(msg+8, &z, 4);
+
+        // pq	
+	memcpy(msg+12, &buf[64], 12);
+	
+	// p answer
+	msg[24] = 4;
+	memcpy(msg+25, &b[32], 4);
+
+	// q answer
+	msg[32] = 4;
+	memcpy(msg+33, &b[64], 4);
+	
+	// client nonce and server nonce
+	memcpy(msg+40, &buf[32], 32);
+
+	// make a new nonce
+	memset(b, 0, 32);
+	r = RAND_bytes(b, 32);
+	if (r == 0) {
+		fprintf(stderr, "Failed to acquire rand bytes\n");
+		close(sd);
+		return 1;
+	}
+
+	memcpy(msg+72, b, 32);
+
+	// add the crc32 of all previous added content at the end
+	z = crc32(0L, Z_NULL, 0);
+	z = crc32(z, msg, 112);
+	memcpy(msg+104, &z, 4);
+
+	// write innerdata serialization to file
+	fname = "2_innerdata.bin";
+	if (dump_buffer(fname, msg, 108)) {
+		close(sd);
+		return 1;
+	}
+
+	close(sd);
 	// all done!
 	return 0;
 }

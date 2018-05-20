@@ -1,7 +1,7 @@
-#ifndef TELEGRAMBAK_H_
-#define TELEGRAMBAK_H_
+#ifndef TGBK_H_
+#define TGBK_H_
 
 int nonce();
 
 
-#endif TELEGRAMBAK_H_
+#endif // TGBK_H_

@@ -1,11 +1,5 @@
 #include "std.h"
 
-//void int32_rev(unsigned char **b) {
-//	int t;
-//	char *n;
-//	n = *b;
-//
-
 void int32_rev(int *n) {
 	char *p;
 	char t;
