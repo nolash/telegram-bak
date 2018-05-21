@@ -15,29 +15,15 @@
 #include "primes.h"
 #include "std.h"
 #include "config.h"
+#include "common.h"
+
+#define KEYDIR "keys"
 
 #define TELEGRAM_HOST TELEGRAM_SERVER_TEST_1
 #define TELEGRAM_PORT TELEGRAM_PORT_2
 
-int dump_buffer(char *fname, char *buf, int n) {
-	int f, e, r;
 
-	e = 0;
-	f = open(fname, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
-	if (f == -1) {
-		fprintf(stderr, "Could not open output file: %s: %d", fname, errno);
-		e = errno;
-	}
-	r = write(f, buf, n);
-	if (r!= n) {
-		e = errno;
-		fprintf(stderr, "Short write to %s: %d", fname, errno);
-		close(f);
-	}
-	close(f);
-	return e;
-}
-
+// WIP
 // a messy implementation of Telegram's MTProto API; first client auch msg
 // (Code assumes little-endian arch. ints, crcs etc need to be converted if not)
 int main() {
@@ -279,6 +265,7 @@ int main() {
 		close(sd);
 		return 1;
 	}
+
 
 	close(sd);
 	// all done!
