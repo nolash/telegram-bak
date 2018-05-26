@@ -112,11 +112,16 @@ int find_pubkey(char *keydir, unsigned char *fingerprint) {
 			int i;
 			printf("\nHASH:\n");
 			for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
-				printf("%02x", (unsigned int)*(md+i));  
+				fprintf(stderr, "%02x", (unsigned int)*(md+i));  
 			}
 			printf("\nDATA:\n");
 			for (i = 0; i < l; i++) {
-				printf("%02x", *(b+i));  
+				fprintf(stderr, "%02x", *(b+i));  
+			}
+
+			if (!memcmp(fingerprint, (unsigned int*)(md+SHA_DIGEST_LENGTH-TGBK_FINGERPRINT_SIZE), 8)) {
+				fprintf(stderr, "\nMATCH!!!!");
+				return 0;
 			}
 		}
 	}
@@ -124,7 +129,7 @@ int find_pubkey(char *keydir, unsigned char *fingerprint) {
 	free(b);
 	free(md);
 
-	return 0;	
+	return 1;	
 }
 
 int dump_buffer(char *fname, char *buf, int n) {

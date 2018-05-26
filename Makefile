@@ -23,6 +23,10 @@ test_rsa:
 	$(CC) $(INCLUDES) -g3 -c $(TESTDIR)/rsa.c -o $(TESTDIR)/test_rsa.o
 	$(CC) $(INCLUDES) -g3 -o $(BUILDDIR)/rsa_bin $(TESTDIR)/test_rsa.o $(SRCDIR)/rsa.o -lcrypto
 
+smoke: test
+	$(CC) -I$(SRCDIR) -I. -g3 -c $(TESTDIR)/smoke.c -o$(TESTDIR)/smoke.o
+	$(CC) -I$(SRCDIR) -I. -o$(BUILDDIR)/smoke_bin $(TESTDIR)/smoke.o $(TESTDIR)/common.o $(SRCDIR)/rsa.o $(SRCDIR)/std.o $(SRCDIR)/primes.o $(SRCDIR)/mt.o -lcrypto -lz
+
 .PHONY: clean
 
 clean:

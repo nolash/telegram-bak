@@ -15,7 +15,6 @@
 #include "primes.h"
 #include "std.h"
 #include "config.h"
-#include "common.h"
 
 #define KEYDIR "keys"
 
@@ -23,16 +22,20 @@
 #define TELEGRAM_PORT TELEGRAM_PORT_2
 
 
+int find_pubkey(char *keydir, unsigned char *fingerprint);
+int dump_buffer(char *fname, char *buf, int n);
+
 // WIP
 // a messy implementation of Telegram's MTProto API; first client auch msg
 // (Code assumes little-endian arch. ints, crcs etc need to be converted if not)
-int main() {
+int main(int argc, char **argv) {
+
 
 	// result ints + iterators
 	int r, i, j;
 
 	// messages
-	char b[256]; // work buffer
+	unsigned char b[256]; // work buffer
 	char msg[1024]; // send buffer
 	char buf[1024]; // recv buffer
 	char *rpccall_str;
@@ -55,6 +58,14 @@ int main() {
 	// local io
 	int f;
 	char *fname;
+	char *keydir;
+
+	// process input
+	if (argc < 2) {
+		fprintf(stderr, "Usage: %s <keydir>", *argv);
+		return 1;
+	}
+	keydir = *(argv+1);
 
 	// command is crc32 of "<callname> [args:type].. = <Type>", converted to NBO
 	rpccall_str = "req_pq_multi nonce:int128 = ResPQ";
@@ -176,15 +187,36 @@ int main() {
 	// verify it
 	z = crc32(0L, Z_NULL, 0);
 	z = crc32(z, buf, r-4);
-
 	if (memcmp(&z, buf+(r-4), 4)) {
 		fprintf(stderr, "CRCs do not match: our %x / their %x", z, *(int*)(buf+(r-4)));
 		close(sd);
 		return 1;
-		
 	}
 
-	// TODO choose public key fingerprint from response
+	// choose public key fingerprint from response
+
+	// get number of keys	
+	// \TODO flip on big endian system
+	memcpy(&j, buf+80, 4);
+	// iterate and match
+	r = 0;
+	for (i = 0; i < j*8; i+=8) {
+		memcpy(b, buf+84+i, 8);
+		if (!find_pubkey(keydir, b)) {
+			r = 1;
+			break;
+		}
+	}
+	if (!r) {
+		fprintf(stderr, "Unknown key fingerprint ");
+		*(b+8) = 0x0;
+		for (i = 0; i < 8; i++) {
+			fprintf(stderr, "%02x", *(b+i));
+		}
+		fprintf(stderr, "\n");
+		close(sd);
+		return 1;
+	}
 
 	// write phase 1 to file
 	fname = "1_recv.bin";
@@ -196,7 +228,7 @@ int main() {
 	// solve pq challenge
 	memset(b, 0, 72);
 	r = buf[56];
-	memcpy(b, &buf[56], r);
+	memcpy(b, (buf+56), (unsigned int)r);
 	t = &b[32];
 	u = &b[64];
 	r = tgbk_pq(r, b, 32, (unsigned char**)&t, &i, (unsigned char**)&u, &j);

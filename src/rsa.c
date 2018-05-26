@@ -6,6 +6,10 @@
 
 extern RSA *tgbk_rsa_pubkey;
 
+int tgbk_havePubkey() {
+	return tgbk_rsa_pubkey == NULL;
+}
+
 int tgbk_rsaPubkeyFromPemFile(const char *filename) {
 	FILE *f;
 
