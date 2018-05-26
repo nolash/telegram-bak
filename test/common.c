@@ -86,7 +86,7 @@ int find_pubkey(char *keydir, unsigned char *fingerprint) {
 		*(fullpath+strlen(keydir)) = 0x2f;
 
 		if (!strcmp((de->d_name)+(dl-3), "rsa")) {
-
+			fprintf(stderr, "processing %s\n", de->d_name);
 			strcpy(fullpath+strlen(keydir)+1, de->d_name);
 			if (tgbk_rsaPubkeyFromPemFile(fullpath)) {
 				closedir(dp);
@@ -110,20 +110,23 @@ int find_pubkey(char *keydir, unsigned char *fingerprint) {
 			SHA1_Final(md, &shactx);
 		
 			int i;
-			printf("\nHASH:\n");
+			fprintf(stderr, "\nHASH:\n");
 			for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
 				fprintf(stderr, "%02x", (unsigned int)*(md+i));  
 			}
-			printf("\nDATA:\n");
+			fprintf(stderr, "\nDATA:\n");
 			for (i = 0; i < l; i++) {
 				fprintf(stderr, "%02x", *(b+i));  
 			}
+			fprintf(stderr, "\n\n");
 
 			if (!memcmp(fingerprint, (unsigned int*)(md+SHA_DIGEST_LENGTH-TGBK_FINGERPRINT_SIZE), 8)) {
-				fprintf(stderr, "\nMATCH!!!!");
+				fprintf(stderr, "\nMATCH!!!! size: %d\n");
 				return 0;
 			}
 		}
+		free(n);
+		free(e);
 	}
 	closedir(dp);
 	free(b);
