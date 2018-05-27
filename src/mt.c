@@ -4,15 +4,56 @@
 
 #include <zlib.h>
 
+#include "error.h"
+#include "std.h"
+
 #define AUTH_KEY_LENGTH 8
 
 unsigned int message_sequence;
 unsigned char auth_key[AUTH_KEY_LENGTH];
 
 /***
+ * Pads the supplied blob up to a multiple of four bytes
+ * It will pad in-place, overwriting up to 3 bytes after l
+ *
+ * \params l length of blob to pad
+ * \params v blob which must have
+ * \return new length
+ */
+int tgbk_pad(int l, char *v) {
+	int r;
+
+	r = (l % 4);
+	if (r == 0) {
+		return l;
+	}
+	r = 4 - r;
+	memset(v+l, 0, r);
+	return l + r;
+}
+
+/***
+ * Unwraps string from serialized form
+ *
+ * \return the net size of the data
+ * \todo handle lengths longer than 254
+ */
+int tgbk_string_unserialize(const unsigned char *v, int *t, int *l, unsigned char **zR, unsigned char **zO) {
+	*l = char2int32(*v);
+	*t = padsize(*l+1);
+
+	memcpy(*zR, v+1, *l);
+	
+	if (zO != NULL) {
+		memcpy(*zO, v+1+(*l), *t-*l-1);
+	}
+	return *l;
+}
+
+/***
  * Binary serialization of string according to MT Protocol 
  *
- * \param c string byte count
+ * \param l string length
  * \param v string
  * \param zS output string, must be allocated to at least 4+c rounded up to nearest multiple of 4
  * \return number of bytes written, or -1 on error
@@ -32,12 +73,13 @@ int tgbk_string_serialize(int l, const char *v, unsigned char **zS) {
 		memcpy(*zS+1, v, l);
 	}
 
-	p = c%4;
-	if (p > 0) {
-		p=4-p;
-	}
-	memset(*zS+c, 0, p);
-	return p+c;
+	return tgbk_pad(c, *zS);
+//	p = c%4;
+//	if (p > 0) {
+//		p=4-p;
+//	}
+//	memset(*zS+c, 0, p);
+//	return p+c;
 }
 
 /***
@@ -128,6 +170,29 @@ int tgbk_transport_wrap(int l, const unsigned char *v, unsigned char **zT) {
 	message_sequence++;
 
 	return c + 4;
+}
+
+/***
+ * checks that message length reported in header is sane and crc is correct
+ *
+ * \param l length of wrapped message
+ * \param v message
+ * \return 0 on success, TGBK_ERR_CRC on crc mismatch, TGBK_ERR_LEN on wrong length
+ */
+int tgbk_transport_verify(int l, const unsigned char *v) {
+	uLong z;
+
+	if (*((int*)(v+4)) != l) {
+		return TGBK_ERR_LEN;
+	}
+	z = crc32(0L, Z_NULL, 0);
+	z = crc32(z, v, l-4);
+	if (memcmp(&z, v+(l-4), 4)) {
+		//fprintf(stderr, "CRCs do not match: our %x / their %x", z, *(int*)(buf+(r-4)));
+		return TGBK_ERR_CRC;
+	}
+
+	return 0;
 }
 
 void tgbk_set_auth_key(unsigned char *k) {

@@ -11,6 +11,102 @@
 #include "rsa.h"
 #include "mt.h"
 
+int string_unserialize() {
+	int i;
+	unsigned char *test;
+	unsigned char *data;
+	unsigned char *overflow;
+	unsigned char zero[12];
+	int gross;
+	int net;
+
+	test = malloc(sizeof(test)*12);
+	data = malloc(sizeof(test)*12);
+	overflow = malloc(sizeof(test)*12);
+
+	for (i = 0; i < sizeof(test); i++) {
+		test[i] = i;
+	}
+	memset(zero, 0, 12);
+	memset(overflow, 0, 12);
+	memset(data, 0, 12);
+	test[0] = 3;
+	tgbk_string_unserialize(test, &gross, &net, &data, &overflow);
+	if (gross != 4 || net != 3) {
+		fprintf(stderr, "testlength 3: expected gross/net 4/3, got %d/%d\n", gross, net);
+		free(overflow);
+		free(data);
+		free(test);
+		return 1;
+	} else if (memcmp(data, test+1, 3)) {
+		fprintf(stderr, "testlength 3: unexpected data\n");
+		free(overflow);
+		free(data);
+		free(test);
+		return 1;
+	} else if (memcmp(overflow, zero, 12)) { 
+		fprintf(stderr, "testlength 3: unexpected overflow data\n");
+		free(overflow);
+		free(data);
+		free(test);
+		return 1;
+	}
+
+	memset(data, 0, 12);
+	test[0] = 4;
+	tgbk_string_unserialize(test, &gross, &net, &data, &overflow);
+	if (gross != 8 || net != 4) {
+		fprintf(stderr, "testlength 4: expected gross/net 8/4, got %d/%d\n", gross, net);
+		free(overflow);
+		free(data);
+		free(test);
+		return 1;
+	} else if (memcmp(data, test+1, 4)) {
+		fprintf(stderr, "testlength 4: unexpected data\n");
+		free(overflow);
+		free(data);
+		free(test);
+		return 1;
+	} else if (memcmp(overflow, test+5, 3)) { 
+		fprintf(stderr, "testlength 4: unexpected overflow data\n");
+		free(overflow);
+		free(data);
+		free(test);
+		return 1;
+	}
+
+	memset(overflow, 0, 12);
+	memset(data, 0, 12);
+	test[0] = 5;
+	tgbk_string_unserialize(test, &gross, &net, &data, &overflow);
+	if (gross != 8 || net != 5) {
+		fprintf(stderr, "testlength 5: expected gross/net 8/5, got %d/%d\n", gross, net);
+		free(overflow);
+		free(data);
+		free(test);
+		return 1;
+	} else if (memcmp(data, test+1, 5)) {
+		fprintf(stderr, "testlength 5: unexpected data\n");
+		free(overflow);
+		free(data);
+		free(test);
+		return 1;
+	} else if (memcmp(overflow, test+6, 2)) { 
+		fprintf(stderr, "testlength 5: unexpected overflow data\n");
+		free(overflow);
+		free(data);
+		free(test);
+		return 1;
+	}
+
+	free(overflow);
+	free(data);
+	free(test);
+
+	return 0;
+}
+
+
 int string_serialize() {
 	int r, l;
 	unsigned char *out;

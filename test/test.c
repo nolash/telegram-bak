@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 char* bin2hex(int l, const unsigned char *v, char **zH);
+int string_unserialize();
 int string_serialize();
 int find_pubkey(char *keydir, unsigned char *fingerprint);
 int dump_buffer(char *fname, char *buf, int n);
@@ -25,5 +26,9 @@ int main() {
 	if (r = string_serialize()) {
 		return r;
 	} 
-	return find_pubkey("keys", NULL);
+
+	if (r = string_unserialize()) {
+		return r;
+	}
+	//return find_pubkey("keys", NULL);
 }

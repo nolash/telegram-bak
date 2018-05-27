@@ -26,3 +26,24 @@ int is_le() {
 	}
 	return 0;
 }
+
+int char2int32(const char n) {
+	char b[4];
+
+	if (is_le()) {
+		b[0] = n;
+	} else {
+		b[3] = n;
+	}
+	return (int)*b;
+}
+
+int padsize(int c) {
+	int r;	
+
+	r = c % 4;
+	if (r == 0) {
+		return c;
+	}
+	return c + (4-r);
+}

@@ -13,7 +13,7 @@ test: obj test_common test_primes test_rsa test_mt
 test_common:
 	$(CC) $(INCLUDES) -g3 -c $(TESTDIR)/common.c -o $(TESTDIR)/common.o
 	$(CC) $(INCLUDES) -g3 -c $(TESTDIR)/test.c -o $(TESTDIR)/test.o
-	$(CC) $(INCLUDES) -g3 -o $(BUILDDIR)/test_bin $(TESTDIR)/test.o $(TESTDIR)/common.o $(SRCDIR)/rsa.o $(SRCDIR)/mt.o -lz -lcrypto
+	$(CC) $(INCLUDES) -g3 -o $(BUILDDIR)/test_bin $(TESTDIR)/test.o $(TESTDIR)/common.o $(SRCDIR)/rsa.o $(SRCDIR)/mt.o $(SRCDIR)/std.o -lz -lcrypto
 
 test_primes:
 	$(CC) $(INCLUDES) -g3 -c $(TESTDIR)/primes.c -o $(TESTDIR)/test_primes.o
@@ -25,10 +25,10 @@ test_rsa:
 
 test_mt:
 	$(CC) $(INCLUDES) -g3 -c $(TESTDIR)/mt.c -o $(TESTDIR)/mt.o
-	$(CC) $(INCLUDES) -g3 -o $(BUILDDIR)/mt_bin $(TESTDIR)/mt.o $(SRCDIR)/mt.o $(TESTDIR)/common.o $(SRCDIR)/rsa.o -lz -lcrypto
+	$(CC) $(INCLUDES) -g3 -o $(BUILDDIR)/mt_bin $(TESTDIR)/mt.o $(SRCDIR)/mt.o $(TESTDIR)/common.o $(SRCDIR)/rsa.o $(SRCDIR)/std.o -lz -lcrypto
 
 smoke: test
-	$(CC) -I$(SRCDIR) -I. -g3 -c $(TESTDIR)/smoke.c -o$(TESTDIR)/smoke.o
+	$(CC) $(CFLAGS) -I$(SRCDIR) -I. -g3 -c $(TESTDIR)/smoke.c -o$(TESTDIR)/smoke.o
 	$(CC) -I$(SRCDIR) -I. -o$(BUILDDIR)/smoke_bin $(TESTDIR)/smoke.o $(TESTDIR)/common.o $(SRCDIR)/rsa.o $(SRCDIR)/std.o $(SRCDIR)/primes.o $(SRCDIR)/mt.o -lcrypto -lz
 
 .PHONY: clean
