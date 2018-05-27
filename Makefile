@@ -8,7 +8,7 @@ obj:
 	$(CC) $(INCLUDES) -g3 -c $(SRCDIR)/rsa.c -o $(SRCDIR)/rsa.o
 	$(CC) $(INCLUDES) -g3 -c $(SRCDIR)/mt.c -o $(SRCDIR)/mt.o
 
-test: obj test_common test_primes test_rsa 
+test: obj test_common test_primes test_rsa test_mt
 
 test_common:
 	$(CC) $(INCLUDES) -g3 -c $(TESTDIR)/common.c -o $(TESTDIR)/common.o
@@ -22,6 +22,10 @@ test_primes:
 test_rsa:
 	$(CC) $(INCLUDES) -g3 -c $(TESTDIR)/rsa.c -o $(TESTDIR)/test_rsa.o
 	$(CC) $(INCLUDES) -g3 -o $(BUILDDIR)/rsa_bin $(TESTDIR)/test_rsa.o $(SRCDIR)/rsa.o -lcrypto
+
+test_mt:
+	$(CC) $(INCLUDES) -g3 -c $(TESTDIR)/mt.c -o $(TESTDIR)/mt.o
+	$(CC) $(INCLUDES) -g3 -o $(BUILDDIR)/mt_bin $(TESTDIR)/mt.o $(SRCDIR)/mt.o $(TESTDIR)/common.o $(SRCDIR)/rsa.o -lz -lcrypto
 
 smoke: test
 	$(CC) -I$(SRCDIR) -I. -g3 -c $(TESTDIR)/smoke.c -o$(TESTDIR)/smoke.o

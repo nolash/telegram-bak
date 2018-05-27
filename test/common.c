@@ -153,3 +153,24 @@ int dump_buffer(char *fname, char *buf, int n) {
 	close(f);
 	return e;
 }
+
+/***
+ * Convert a byte sequence to hex string
+ *
+ * \param l length of bytes
+ * \param v bytes to hexify
+ * \param zH output string, must hold at least l*2+1 bytes
+ * \return pointer to hex string
+ * \todo write without using sprintf
+ */
+char* bin2hex(int l, const unsigned char *v, char **zH) {
+	int i;
+	int j;
+
+	for (i = 0; i < l; i++) {
+		j = i * 2;
+		sprintf(*zH+j, "%02x", *(v+i));
+	}
+	*(zH+j) = 0x0;
+	return *zH;
+}
